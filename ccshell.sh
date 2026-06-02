@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# ccshell.sh — Claude Cowork Shell Command Runner
+# ccshell.sh — Claude Cowork Shell Access
 #
-# A file-polling shell bridge for Claude in Cowork mode (and other AI clients
-# that can write files but can't run shell commands directly). Polls a
+# A file-polling shell access bridge for Claude in Cowork mode. Polls a
 # `queue/` directory for *.sh files, runs them with a per-script timeout,
 # captures output to `done/`. The AI drops scripts; the runner executes them
 # as you; the AI reads results back. No keystroke injection, ever.
@@ -27,13 +26,13 @@
 # the queue dir to untrusted writers.
 #
 # License: MIT
-# Project: https://github.com/renshuBTC/claude-cowork-shell-command-runner
+# Project: https://github.com/renshuBTC/claude-cowork-shell-access
 
 set -u
 
 CCSHELL_DIR=${CCSHELL_DIR:-${DROPSHELL_DIR:-./.ccshell}}      # DROPSHELL_DIR kept as alias for back-compat
 CCSHELL_TIMEOUT=${CCSHELL_TIMEOUT:-${DROPSHELL_TIMEOUT:-60}}
-CCSHELL_VERSION="0.1.1"
+CCSHELL_VERSION="0.1.2"
 
 ROOT=$(mkdir -p "$CCSHELL_DIR" && cd "$CCSHELL_DIR" && pwd)
 mkdir -p "$ROOT/queue" "$ROOT/done"
@@ -50,7 +49,7 @@ fi
 echo "$$" > "$ROOT/.pid"
 echo "running" > "$ROOT/.running"
 
-echo "==> ccshell v$CCSHELL_VERSION (Claude Cowork Shell Command Runner) started"
+echo "==> ccshell v$CCSHELL_VERSION (Claude Cowork Shell Access) started"
 echo "    pid=$$  root=$ROOT  timeout=${CCSHELL_TIMEOUT}s per script"
 echo "    drop scripts at: $ROOT/queue/<name>.sh"
 echo "    outputs land at: $ROOT/done/<name>.out"

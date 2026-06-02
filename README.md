@@ -1,6 +1,6 @@
-# Claude Cowork Shell Command Runner
+# Claude Cowork Shell Access
 
-> A ~90-line bash bridge that lets Claude in Cowork mode run shell commands on your machine. Paste one line, give Claude a workbench in your shell. Stop it whenever you want.
+> A ~90-line bash bridge that gives Claude in Cowork mode access to your shell. Paste one line, and Claude can run commands on your machine. Stop it whenever you want.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![shell: bash](https://img.shields.io/badge/shell-bash-blue.svg)](ccshell.sh)
@@ -10,9 +10,9 @@ Short name: **`ccshell`** (the script is `ccshell.sh`).
 
 ## What it does
 
-Claude in Cowork mode can read and write files in folders you've opened, but it can't run shell commands on your machine. `ccshell` fills that one gap.
+Claude in Cowork mode can read and write files in folders you've opened, but it can't run shell commands on your machine. This project gives it that one capability.
 
-You start it once. It watches a folder. Claude drops a script into that folder. `ccshell` runs it on your machine *as you*, with all your normal permissions, and saves the output where Claude can read it back.
+You start it once. It watches a folder. Claude drops a shell script into that folder. The runner picks the script up within a second, executes it on your machine *as you*, with all your normal permissions, and saves the output where Claude can read it back.
 
 That is the whole product.
 
@@ -20,7 +20,7 @@ That is the whole product.
 # in your terminal:
 bash ccshell.sh
 
-# from Claude (it just writes a file in the queue folder):
+# Claude (via its file tools) drops a script:
 #   .ccshell/queue/001-hello.sh
 # within ~1 second, the result appears at:
 #   .ccshell/done/001-hello.out
@@ -28,20 +28,9 @@ bash ccshell.sh
 
 ## Who this is for
 
-- **Claude users in Cowork mode** who want their assistant to actually drive their machine — push to GitHub via their SSH key, run their test suite, query their local database, drive a non-trivial workflow — without anyone typing into a terminal.
+**Claude users in Cowork mode** who want their assistant to actually drive their machine — push to GitHub via their SSH key, run their test suite, query their local database, manage daemons, drive multi-step workflows — without anyone typing into a terminal.
 
-That is the primary use case. Cowork has file write access to opened folders; that's the only capability `ccshell` needs from the AI side.
-
-## Who this is NOT for
-
-Be honest about the alternatives so people who don't fit can route themselves to the right tool:
-
-- **If you want a full personal AI agent platform** with skills, integrations, scheduling, etc., look at [OpenClaw](https://github.com/openclaw/openclaw). Much bigger and more polished.
-- **If you can use [Claude Code](https://docs.claude.com/en/docs/claude-code)**, use that — it's the official terminal-native agent and is strictly better when it fits.
-- **If you're vibe-coding** in Lovable, Bolt, v0, or Replit, you don't need this. Those provide their own execution.
-- **If your AI lives in a browser** (Claude in Chrome, claude.ai web chat), it can't write to your local filesystem, so `ccshell` won't help. The browser AI has no way to drop scripts into your queue folder.
-
-`ccshell` is specifically for Cowork mode (and any future Claude client that gets the same file-write capability without direct shell access).
+Cowork has the file-write capability needed to drop scripts into the queue. That's the only thing the runner asks for.
 
 ## How it works
 
@@ -61,7 +50,7 @@ Be honest about the alternatives so people who don't fit can route themselves to
 
 1. **You start it.** `bash ccshell.sh`. A poll loop wakes up.
 2. **Claude writes a script to `queue/`.** Any name ending in `.sh`. Oldest first.
-3. **`ccshell` runs it.** Per-script timeout (default 60s). All stdout+stderr land in `done/<name>.out`. The script file gets renamed `.sh.done` so it doesn't re-run.
+3. **The runner executes it.** Per-script timeout (default 60s). All stdout+stderr land in `done/<name>.out`. The script file gets renamed `.sh.done` so it doesn't re-run.
 4. **Claude reads the output.** Decides what to do next. Drops another script.
 5. **You stop it.** `rm .ccshell/.running` or Ctrl+C.
 
@@ -72,15 +61,15 @@ Everything is files. Everything is readable. There's no socket, no daemon, no ne
 No install. One bash script.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/renshuBTC/claude-cowork-shell-command-runner/main/ccshell.sh > ccshell.sh
+curl -fsSL https://raw.githubusercontent.com/renshuBTC/claude-cowork-shell-access/main/ccshell.sh > ccshell.sh
 chmod +x ccshell.sh
 ```
 
 Or clone the repo:
 
 ```bash
-git clone https://github.com/renshuBTC/claude-cowork-shell-command-runner
-cd claude-cowork-shell-command-runner
+git clone https://github.com/renshuBTC/claude-cowork-shell-access
+cd claude-cowork-shell-access
 bash ccshell.sh
 ```
 
@@ -88,7 +77,7 @@ Requirements: bash, standard Unix utilities (`ls`, `mv`, `rm`, `timeout`, `sleep
 
 ## Configuration
 
-Optional, via environment variables:
+All optional, via environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -114,7 +103,7 @@ That's the entire integration. No plugin to install. No config.
 
 ## Permissions and security
 
-**`ccshell` needs no special privileges of its own.** No root, no sudo, no special groups, no network ports.
+**The runner needs no special privileges of its own.** No root, no sudo, no special groups, no network ports.
 
 But every script that runs through it inherits your shell's full privileges. **If you can do it from a terminal, a queued script can too.**
 
@@ -122,7 +111,7 @@ But every script that runs through it inherits your shell's full privileges. **I
 |---|---|
 | Read your home folder | Read your home folder |
 | Push to GitHub via SSH | Push to GitHub via SSH |
-| Use your AWS / cloud creds | Use them |
+| Use your AWS / cloud credentials | Use them |
 | `sudo` with a cached timestamp | `sudo` without prompting |
 | `rm -rf ~/important-stuff` | Same |
 
@@ -145,21 +134,7 @@ By running `bash ccshell.sh`, you're saying: *"I trust whoever can write to my q
 - **Not a service or daemon.** Runs only while you have the terminal open.
 - **Not a privilege escalator.** Does only what you can already do.
 - **Not magic.** ~90 lines of bash. Read it.
-- **Not a Claude Code or OpenClaw replacement.** Those are bigger, more capable tools for different use cases.
 - **Not affiliated with Anthropic.** Independent project. "Claude" and "Cowork" are Anthropic trademarks; usage here describes interoperability, not endorsement.
-
-## Comparison
-
-| | **ccshell** | **Claude Code** | **OpenClaw** |
-|---|---|---|---|
-| What it is | Shell bridge | Official AI CLI | Personal AI agent platform |
-| Includes the AI | No (assumes Claude in Cowork) | Yes (Claude) | Yes (bring your own LLM) |
-| Install | None (~90 lines bash) | Full CLI install | Full app install |
-| Skills/integrations | Zero — runs whatever you give it | Slash commands + hooks | 100+ AgentSkills |
-| Native target | Claude in Cowork mode | Developers in terminals | Self-hosted personal agent |
-| Lines of code | ~90 | Large project | Large project |
-
-If you can install Claude Code or OpenClaw, you probably should. `ccshell` is for when the right answer is the smallest possible thing.
 
 ## FAQ
 
@@ -191,6 +166,6 @@ MIT. See [LICENSE](LICENSE).
 
 ## Acknowledgments
 
-Inspired by the `at` command's spool directory pattern (since 1979), Maildir-style queueing, and the general "filesystem-as-message-queue" idea. The specific framing as a bridge for Claude in Cowork mode emerged from real BTX (Bitcoin Terminal Exchange) work in mid-2026, where the AI needed to drive a mainnet wallet, push commits, run cargo tests, and interact with daemons on the user's machine — all without typing into a terminal.
+Inspired by the `at` command's spool directory pattern (since 1979), Maildir-style queueing, and the general "filesystem-as-message-queue" idea. The specific framing as a bridge for Claude in Cowork mode emerged from real Bitcoin protocol work in mid-2026 — the AI needed to drive a mainnet wallet, push commits, run cargo tests, and interact with daemons on the host machine, all without typing into a terminal.
 
-Renamed from `dropshell` in v0.1.1 to better describe the intended audience.
+Renamed from `dropshell` (v0.1.0) → `claude-cowork-shell-command-runner` (v0.1.1) → `claude-cowork-shell-access` (v0.1.2).
