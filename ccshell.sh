@@ -1,46 +1,47 @@
 #!/usr/bin/env bash
-# dropshell.sh — file-polling shell bridge for AI agents in restricted hosts.
+# ccshell.sh — Claude Cowork Shell Command Runner
 #
-# Polls a `queue/` directory for *.sh files, runs them with a per-script
-# timeout, and captures their output to `done/`. Designed so an AI assistant
-# can drop scripts in the queue and read results from done/ without ever
-# typing into your terminal.
+# A file-polling shell bridge for Claude in Cowork mode (and other AI clients
+# that can write files but can't run shell commands directly). Polls a
+# `queue/` directory for *.sh files, runs them with a per-script timeout,
+# captures output to `done/`. The AI drops scripts; the runner executes them
+# as you; the AI reads results back. No keystroke injection, ever.
 #
 # Usage:
-#   bash dropshell.sh                    # uses ./.dropshell as the root
-#   DROPSHELL_DIR=~/.dropshell bash dropshell.sh
-#   DROPSHELL_TIMEOUT=30 bash dropshell.sh  # 30s per-script timeout
+#   bash ccshell.sh                       # uses ./.ccshell as the root
+#   CCSHELL_DIR=~/.ccshell bash ccshell.sh
+#   CCSHELL_TIMEOUT=30 bash ccshell.sh    # 30s per-script timeout
 #
-# Stop with: rm "$DROPSHELL_DIR/.running"   (or Ctrl+C)
+# Stop with: rm "$CCSHELL_DIR/.running"   (or Ctrl+C)
 #
 # Layout created automatically:
-#   $DROPSHELL_DIR/
+#   $CCSHELL_DIR/
 #     queue/   — drop *.sh here; the watcher picks them up oldest-first
 #     done/    — output (one .out file per script) lands here
 #     .pid     — current watcher's pid
 #     .running — marker file; remove to stop the watcher
 #
-# The watcher takes no special privileges. It inherits exactly whatever
+# The runner takes no special privileges. It inherits exactly whatever
 # shell privileges the user who started it has. Scripts that land in
 # queue/ can do anything the user can do. Read the README before exposing
 # the queue dir to untrusted writers.
 #
-# License: MIT. Project: https://github.com/renshuBTC/dropshell
+# License: MIT
+# Project: https://github.com/renshuBTC/claude-cowork-shell-command-runner
 
 set -u
 
-DROPSHELL_DIR=${DROPSHELL_DIR:-./.dropshell}
-DROPSHELL_TIMEOUT=${DROPSHELL_TIMEOUT:-60}
-DROPSHELL_VERSION="0.1.0"
+CCSHELL_DIR=${CCSHELL_DIR:-${DROPSHELL_DIR:-./.ccshell}}      # DROPSHELL_DIR kept as alias for back-compat
+CCSHELL_TIMEOUT=${CCSHELL_TIMEOUT:-${DROPSHELL_TIMEOUT:-60}}
+CCSHELL_VERSION="0.1.1"
 
-ROOT=$(mkdir -p "$DROPSHELL_DIR" && cd "$DROPSHELL_DIR" && pwd)
+ROOT=$(mkdir -p "$CCSHELL_DIR" && cd "$CCSHELL_DIR" && pwd)
 mkdir -p "$ROOT/queue" "$ROOT/done"
 chmod 700 "$ROOT" 2>/dev/null || true
 
-# Kill any previous watcher cleanly
 OLD_PID=$(cat "$ROOT/.pid" 2>/dev/null || true)
 if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "==> killing previous watcher pid=$OLD_PID"
+    echo "==> killing previous runner pid=$OLD_PID"
     kill -9 "$OLD_PID" 2>/dev/null || true
     pkill -9 -P "$OLD_PID" 2>/dev/null || true
     sleep 1
@@ -49,21 +50,20 @@ fi
 echo "$$" > "$ROOT/.pid"
 echo "running" > "$ROOT/.running"
 
-echo "==> dropshell v$DROPSHELL_VERSION started"
-echo "    pid=$$  root=$ROOT  timeout=${DROPSHELL_TIMEOUT}s per script"
+echo "==> ccshell v$CCSHELL_VERSION (Claude Cowork Shell Command Runner) started"
+echo "    pid=$$  root=$ROOT  timeout=${CCSHELL_TIMEOUT}s per script"
 echo "    drop scripts at: $ROOT/queue/<name>.sh"
 echo "    outputs land at: $ROOT/done/<name>.out"
 echo "    stop with: rm '$ROOT/.running'   (or Ctrl+C)"
 
-trap 'echo "==> dropshell exiting"; rm -f "$ROOT/.running" "$ROOT/.pid"' EXIT INT TERM
+trap 'echo "==> ccshell exiting"; rm -f "$ROOT/.running" "$ROOT/.pid"' EXIT INT TERM
 
-# Auto-skip any script that already has an .out file (partial run from a prior watcher)
 for f in "$ROOT/queue/"*.sh; do
     [ -f "$f" ] || continue
     base=$(basename "$f" .sh)
     if [ -f "$ROOT/done/$base.out" ]; then
         mv "$f" "$f.skipped"
-        echo "==> skipped $base (output exists from previous watcher)"
+        echo "==> skipped $base (output exists from previous runner)"
     fi
 done
 
@@ -72,15 +72,15 @@ while [ -f "$ROOT/.running" ]; do
     if [ -n "$next" ]; then
         base=$(basename "$next" .sh)
         out="$ROOT/done/$base.out"
-        echo "==> [$base] running (timeout ${DROPSHELL_TIMEOUT}s)..."
+        echo "==> [$base] running (timeout ${CCSHELL_TIMEOUT}s)..."
         START=$(date +%s)
         {
-            timeout --kill-after=5 "$DROPSHELL_TIMEOUT" bash "$next" 2>&1
+            timeout --kill-after=5 "$CCSHELL_TIMEOUT" bash "$next" 2>&1
             ec=$?
             END=$(date +%s)
             echo "===EXIT=$ec=== (took $((END-START))s)"
             if [ "$ec" -eq 124 ]; then
-                echo "===TIMED OUT after ${DROPSHELL_TIMEOUT}s — script killed, watcher continues==="
+                echo "===TIMED OUT after ${CCSHELL_TIMEOUT}s — script killed, runner continues==="
             fi
         } > "$out"
         mv "$next" "$next.done"
