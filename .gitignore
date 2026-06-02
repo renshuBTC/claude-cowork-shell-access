@@ -1,0 +1,12 @@
+# dropshell runtime — never commit these
+.dropshell/
+*.pid
+*.running
+*.out
+*.sh.done
+*.sh.skipped
+
+# editors
+.vscode/
+.idea/
+*.swp
